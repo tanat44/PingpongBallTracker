@@ -5,6 +5,29 @@ import argparse
 import cv2
 import imutils
 import time
+import serial
+
+# configure the serial connections (the parameters differs on the device you are connecting to)
+myserial = serial.Serial(
+    port='COM17',
+    baudrate=9600,
+    timeout = 0.1
+)
+myserial.isOpen()
+
+
+
+def writeServo(x):
+    setPoint = 300
+    delta = x-setPoint
+    inRange = [-300,300]
+    outRange = [0,255]
+    outMid = (float(outRange[0]) + outRange[1]) / 2
+
+    out = float(delta) / (inRange[1] - inRange[0]) * (outRange[1] - outRange[0]) + outRange[0] + outMid
+    myserial.write(f'{out}\n'.encode())
+    
+
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -50,12 +73,9 @@ while True:
     # resize the frame, blur it, and convert it to the HSV
     # color space
     frame = imutils.resize(frame, width=600)
+    frame = cv2.flip(frame,1)
     blurred = cv2.GaussianBlur(frame, (13, 13), 0)
     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-
-    # construct a mask for the color "green", then perform
-    # a series of dilations and erosions to remove any small
-    # blobs left in the mask
     mask = cv2.inRange(hsv, greenLower, greenUpper)
     mask = cv2.erode(mask, None, iterations=2)
     mask = cv2.dilate(mask, None, iterations=2)
@@ -84,7 +104,6 @@ while True:
             radiusOk = previousTrack["radius"] - RADIUS_MAX_SPEED < radius < previousTrack["radius"] + RADIUS_MAX_SPEED
             speedXok = previousTrack["center"][0] - PLANA_MAX_SPEED < x < previousTrack["center"][0] + PLANA_MAX_SPEED 
             speedYok = previousTrack["center"][1] - PLANA_MAX_SPEED < y < previousTrack["center"][1] + PLANA_MAX_SPEED 
-            print(radiusOk, speedXok, speedYok)
             if radiusOk and speedXok and speedYok:
                 history.append({
                     "radius": radius,
@@ -116,9 +135,12 @@ while True:
     # show the frame to our screen
     mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
     frame = cv2.hconcat([frame, mask])
-    frame = imutils.resize(frame, width=1920)
     cv2.imshow("Frame", frame)
-    # cv2.imshow("M", mask)
+
+
+    latestTrack = history[-1]
+    writeServo(latestTrack["center"][0])
+
     key = cv2.waitKey(1) & 0xFF
 
     # if the 'q' key is pressed, stop the loop
