@@ -1,7 +1,7 @@
 Run on Pyhton3.9 + OpenCV
 
 Click the image below to watch video demo
-[![Demo](tracking210617.png "Tracking Demo")](https://youtu.be/EJ_SHeF628E)
+[![Tracking Demo](https://github.com/tanat44/PingpongBallTracker/blob/master/tracking210617.PNG)](https://youtu.be/EJ_SHeF628E)
 
 The original tracking idea was developed by Ahx.
 
