@@ -32,12 +32,16 @@ class App(QWidget):
         # FRAME CONTROL
         frameControlLayout = QHBoxLayout()
         self.startButton = QPushButton("Play")
-        self.startButton.clicked.connect(self.togglePlay)
+        self.startButton.clicked.connect(self.toggleVideoPlay)
         frameControlLayout.addWidget(self.startButton)
         self.previousButton = QPushButton("-1")
         frameControlLayout.addWidget(self.previousButton)
         self.nextButton = QPushButton("+1")
         frameControlLayout.addWidget(self.nextButton)
+        self.resetButton = QPushButton("Reset")
+        frameControlLayout.addWidget(self.resetButton)
+        self.resetButton.clicked.connect(self.resetVideo)
+
 
         # MASK CONTROL
         maskControlLayout = QVBoxLayout()
@@ -72,8 +76,11 @@ class App(QWidget):
         qt_img = self.convert_cv_qt(cv_img)
         self.image_label.setPixmap(qt_img)
 
-    def togglePlay(self):
+    def toggleVideoPlay(self):
         self.videoThread.togglePlay()
+
+    def resetVideo(self):
+        self.videoThread.resetPlay()
     
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""

@@ -11,6 +11,7 @@ class VideoThread(QThread):
     def __init__(self, imageProcessor, file = None):
         super().__init__()
         self.running = True
+        self.file = file
         if file is None:
             self.vs = cv2.VideoCapture(1)
         else:    
@@ -37,6 +38,10 @@ class VideoThread(QThread):
 
     def togglePlay(self):
         self.playing = not self.playing
+
+    def resetPlay(self):
+        if self.file is not None:
+            self.vs = cv2.VideoCapture(self.file)
 
     def stop(self):
         """Sets run flag to False and waits for thread to finish"""
