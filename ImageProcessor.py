@@ -27,7 +27,6 @@ class BallTracker(ImageProcessor):
             return False, None, None
 
         frame = imutils.resize(frame, width=600)
-        frame = cv2.flip(frame,1)
         blurred = cv2.GaussianBlur(frame, (13, 13), 0)
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv, greenLower, greenUpper)
@@ -78,7 +77,7 @@ class BallTracker(ImageProcessor):
             self.history.pop(0)
 
         mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
-        frame = cv2.hconcat([frame, mask])
+        frame = cv2.vconcat([frame, mask])
 
         latestTrack = self.history[-1]
 

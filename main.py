@@ -1,5 +1,5 @@
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QSizePolicy, QWidget, QApplication, QLabel, QVBoxLayout
+from PyQt5.QtWidgets import QHBoxLayout, QPushButton, QSizePolicy, QWidget, QApplication, QLabel, QVBoxLayout, QGridLayout
 from PyQt5.QtGui import QPixmap
 import sys
 import cv2
@@ -9,45 +9,71 @@ import numpy as np
 # MY LIB
 from VideoThread import VideoThread
 from ImageProcessor import BallTracker
-
+from Widget.Slider import Slider
 
 class App(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Pingpong Robot Manager")
-        self.disply_width = 1000
-        self.display_height = 800
-        # create the label that holds the image
+        self.setFixedSize(1200,800)
+        mainLayout = QHBoxLayout()
+
+        # VIDEO DISPLAY
         self.image_label = QLabel(self)
         self.image_label.setFixedSize(640,480)
-        # create a text label
-        self.textLabel = QLabel('Webcam')
-
-        # create a vertical box layout and add the two labels
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.image_label)
-        vbox.addWidget(self.textLabel)
-        # set the vbox layout as the widgets layout
-        self.setLayout(vbox)
-
+        mainLayout.addWidget(self.image_label)
         self.imageProcessor = {
             "ballTracker": BallTracker()
         }
-        self.thread = VideoThread(self.imageProcessor["ballTracker"])
-        self.thread.change_pixmap_signal.connect(self.update_image)
-        self.thread.start()
+        self.videoThread = VideoThread(self.imageProcessor["ballTracker"], file = "Video/test.mp4")
+        self.videoThread.change_pixmap_signal.connect(self.update_image)
+        self.videoThread.start()
+
+        # FRAME CONTROL
+        frameControlLayout = QHBoxLayout()
+        self.startButton = QPushButton("Play")
+        self.startButton.clicked.connect(self.togglePlay)
+        frameControlLayout.addWidget(self.startButton)
+        self.previousButton = QPushButton("-1")
+        frameControlLayout.addWidget(self.previousButton)
+        self.nextButton = QPushButton("+1")
+        frameControlLayout.addWidget(self.nextButton)
+
+        # MASK CONTROL
+        maskControlLayout = QVBoxLayout()
+        self.topSlider = Slider("Top", 0, 100, 50)
+        maskControlLayout.addWidget(self.topSlider)
+        self.bottomSlider = Slider("Bottom", 0, 100, 50)
+        maskControlLayout.addWidget(self.bottomSlider)
+        self.leftSlider = Slider("Left", 0, 100, 50)
+        maskControlLayout.addWidget(self.leftSlider)
+        self.rightSlider = Slider("Right", 0, 100, 50)
+        maskControlLayout.addWidget(self.rightSlider)
+
+
+        # CONTROL PANEL
+        controlPanelLayout = QVBoxLayout()
+        controlPanelLayout.addLayout(frameControlLayout)
+        controlPanelLayout.addLayout(maskControlLayout)
+        controlPanelLayout.addWidget(QWidget())
+
+        self.controlPanel = QWidget()
+        self.controlPanel.setLayout(controlPanelLayout)
+        mainLayout.addWidget(self.controlPanel)
+
+        self.setLayout(mainLayout)
 
     def closeEvent(self, event):
-        self.thread.stop()
+        self.videoThread.stop()
         event.accept()
 
-
-
     @pyqtSlot(np.ndarray)
-    def update_image(self, cv_img, pos):
-        print(pos)
+    def update_image(self, cv_img):
         qt_img = self.convert_cv_qt(cv_img)
         self.image_label.setPixmap(qt_img)
+
+    def togglePlay(self):
+        self.videoThread.togglePlay()
     
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""
