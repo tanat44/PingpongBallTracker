@@ -8,7 +8,7 @@ import numpy as np
 
 # MY LIB
 from VideoThread import VideoThread
-from ImageProcessor import BallTracker
+from ImageProcessor import BallTracker, ImageProcessor
 from Widget.Slider import Slider
 
 class App(QWidget):
@@ -16,12 +16,11 @@ class App(QWidget):
         super().__init__()
         self.setWindowTitle("Pingpong Robot Manager")
         self.setFixedSize(1200,800)
-        mainLayout = QHBoxLayout()
+        
 
         # VIDEO DISPLAY
         self.image_label = QLabel(self)
-        self.image_label.setFixedSize(640,480)
-        mainLayout.addWidget(self.image_label)
+        # self.image_label.setFixedSize(640,480)
         self.imageProcessor = {
             "ballTracker": BallTracker()
         }
@@ -32,55 +31,142 @@ class App(QWidget):
         # FRAME CONTROL
         frameControlLayout = QHBoxLayout()
         self.startButton = QPushButton("Play")
-        self.startButton.clicked.connect(self.toggleVideoPlay)
+        self.startButton.clicked.connect(self.togglePlayClick)
         frameControlLayout.addWidget(self.startButton)
-        self.previousButton = QPushButton("-1")
-        frameControlLayout.addWidget(self.previousButton)
-        self.nextButton = QPushButton("+1")
-        frameControlLayout.addWidget(self.nextButton)
-        self.resetButton = QPushButton("Reset")
-        frameControlLayout.addWidget(self.resetButton)
-        self.resetButton.clicked.connect(self.resetVideo)
 
+        self.previousFrameButton = QPushButton("<<")
+        self.previousFrameButton.clicked.connect(self.previousFrameClick)
+        frameControlLayout.addWidget(self.previousFrameButton)
+        
+        self.nextFrameButton = QPushButton(">>")
+        self.nextFrameButton.clicked.connect(self.nextFrameClick)
+        frameControlLayout.addWidget(self.nextFrameButton)
+
+        self.resetButton = QPushButton("Reset")
+        self.resetButton.clicked.connect(self.resetClick)
+        frameControlLayout.addWidget(self.resetButton)
 
         # MASK CONTROL
         maskControlLayout = QVBoxLayout()
-        self.topSlider = Slider("Top", 0, 100, 50)
+        self.topSlider = Slider("Top", 0, 100, 2)
+        self.topSlider.change_value_signal.connect(self.topSliderChange)
         maskControlLayout.addWidget(self.topSlider)
-        self.bottomSlider = Slider("Bottom", 0, 100, 50)
-        maskControlLayout.addWidget(self.bottomSlider)
-        self.leftSlider = Slider("Left", 0, 100, 50)
+
+        self.leftSlider = Slider("Left", 0, 100, 27)
+        self.leftSlider.change_value_signal.connect(self.leftSliderChange)
         maskControlLayout.addWidget(self.leftSlider)
-        self.rightSlider = Slider("Right", 0, 100, 50)
+
+        self.bottomSlider = Slider("Bottom", 0, 100, 3)
+        self.bottomSlider.change_value_signal.connect(self.bottomSliderChange)
+        maskControlLayout.addWidget(self.bottomSlider)
+
+        self.rightSlider = Slider("Right", 0, 100, 30)
+        self.rightSlider.change_value_signal.connect(self.rightSliderChange)
         maskControlLayout.addWidget(self.rightSlider)
 
+        # COLOR CONTROL
+        colorControlLayout = QVBoxLayout()
+        colorThreshold = self.videoThread.imageProcessor.colorThreshold
+
+        self.hMinSlider = Slider("H Min", 0, 179, colorThreshold.h_min)
+        self.hMinSlider.change_value_signal.connect(self.hMinSliderChange)
+        colorControlLayout.addWidget(self.hMinSlider)
+        self.hMaxSlider = Slider("H Max", 0, 179, colorThreshold.h_max)
+        self.hMaxSlider.change_value_signal.connect(self.hMaxSliderChange)
+        colorControlLayout.addWidget(self.hMaxSlider)
+
+        self.sMinSlider = Slider("S Min", 0, 255, colorThreshold.s_min)
+        self.sMinSlider.change_value_signal.connect(self.sMinSliderChange)
+        colorControlLayout.addWidget(self.sMinSlider)
+        self.sMaxSlider = Slider("S Max", 0, 255, colorThreshold.s_max)
+        self.sMaxSlider.change_value_signal.connect(self.sMaxSliderChange)
+        colorControlLayout.addWidget(self.sMaxSlider)
+
+        self.vMinSlider = Slider("V Min", 0, 255, colorThreshold.v_min)
+        self.vMinSlider.change_value_signal.connect(self.vMinSliderChange)
+        colorControlLayout.addWidget(self.vMinSlider)
+        self.vMaxSlider = Slider("V Max", 0, 255, colorThreshold.v_max)
+        self.vMaxSlider.change_value_signal.connect(self.vMaxSliderChange)
+        colorControlLayout.addWidget(self.vMaxSlider)
 
         # CONTROL PANEL
         controlPanelLayout = QVBoxLayout()
         controlPanelLayout.addLayout(frameControlLayout)
         controlPanelLayout.addLayout(maskControlLayout)
+        controlPanelLayout.addLayout(colorControlLayout)
         controlPanelLayout.addWidget(QWidget())
 
         self.controlPanel = QWidget()
         self.controlPanel.setLayout(controlPanelLayout)
-        mainLayout.addWidget(self.controlPanel)
+
+        # MAIN LAYOUT
+        mainLayout = QHBoxLayout()
+        mainLayout.addWidget(self.image_label, 2)
+        mainLayout.addWidget(self.controlPanel, 1)
 
         self.setLayout(mainLayout)
+
+        # INIT VALUE
+        self.videoThread.setRoi(top=self.topSlider.value(), left=self.leftSlider.value(), bottom=self.bottomSlider.value(), right=self.rightSlider.value())
 
     def closeEvent(self, event):
         self.videoThread.stop()
         event.accept()
+
+    # SLOT
 
     @pyqtSlot(np.ndarray)
     def update_image(self, cv_img):
         qt_img = self.convert_cv_qt(cv_img)
         self.image_label.setPixmap(qt_img)
 
-    def toggleVideoPlay(self):
+    def topSliderChange(self, v):
+        self.videoThread.setRoi(top=v)
+
+    def leftSliderChange(self, v):
+        self.videoThread.setRoi(left=v)
+
+    def bottomSliderChange(self, v):
+        self.videoThread.setRoi(bottom=v)
+
+    def rightSliderChange(self, v):
+        self.videoThread.setRoi(right=v)
+
+    def hMinSliderChange(self, v):
+        self.videoThread.imageProcessor.setColorThreshold(h_min = v)
+        self.videoThread.reprocessFrame()
+    
+    def hMaxSliderChange(self, v):
+        self.videoThread.imageProcessor.setColorThreshold(h_max = v)
+        self.videoThread.reprocessFrame()
+
+    def sMinSliderChange(self, v):
+        self.videoThread.imageProcessor.setColorThreshold(s_min = v)
+        self.videoThread.reprocessFrame()
+    
+    def sMaxSliderChange(self, v):
+        self.videoThread.imageProcessor.setColorThreshold(s_max = v)
+        self.videoThread.reprocessFrame()
+
+    def vMinSliderChange(self, v):
+        self.videoThread.imageProcessor.setColorThreshold(v_min = v)
+        self.videoThread.reprocessFrame()
+    
+    def vMaxSliderChange(self, v):
+        self.videoThread.imageProcessor.setColorThreshold(v_max = v)
+        self.videoThread.reprocessFrame()
+
+    def togglePlayClick(self):
         self.videoThread.togglePlay()
 
-    def resetVideo(self):
+    def resetClick(self):
         self.videoThread.resetPlay()
+
+    def nextFrameClick(self):
+        self.videoThread.nextFrame()
+    
+    def previousFrameClick(self):
+        self.videoThread.previousFrame()
     
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""

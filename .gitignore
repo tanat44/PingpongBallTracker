@@ -1,6 +1,7 @@
 *__pycache__/*
 */__pycache__/*
 Video/*
+.vscode/*
 
 # but not these files
 !Video/test.mp4

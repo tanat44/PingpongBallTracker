@@ -1,9 +1,10 @@
-from PyQt5.QtWidgets import (QWidget, QSlider, QHBoxLayout,
+from PyQt5.QtWidgets import (QSizePolicy, QWidget, QSlider, QHBoxLayout,
                              QLabel, QApplication)
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 
 
 class Slider(QWidget):
+    change_value_signal = pyqtSignal(int)
 
     def __init__(self, name="Unknown", min=0, max=100, defaultValue = 50):
         super().__init__()
@@ -14,7 +15,6 @@ class Slider(QWidget):
         sld.setFocusPolicy(Qt.NoFocus)
         sld.setPageStep(1)
         sld.valueChanged.connect(self.updateLabel)
-        
         
         self.nameLabel = QLabel(name, self)
         self.nameLabel.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -30,6 +30,12 @@ class Slider(QWidget):
         hbox.addWidget(self.valueLabel)
 
         self.setLayout(hbox)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setFixedHeight(30)
 
     def updateLabel(self, value):
         self.valueLabel.setText(str(value))
+        self.change_value_signal.emit(value)
+
+    def value(self):
+        return int(self.valueLabel.text())
