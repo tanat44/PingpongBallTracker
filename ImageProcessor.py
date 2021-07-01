@@ -3,15 +3,13 @@ import numpy as np
 import cv2
 import imutils
 
+# MY LIB
+from Track import Track, Tracks
+
 class ImageProcessor():
     @abstractmethod
     def calculate(self):
         pass
-
-# PARAMETERS
-RADIUS_MAX_SPEED = 5
-PLANA_MAX_SPEED = 80
-MAX_SKIP_FRAME = 10
 
 class ColorThreshold():
     def __init__(self, h_min=14, h_max=30, s_min=14, s_max=255, v_min=243, v_max=255):
@@ -28,11 +26,10 @@ class ColorThreshold():
     def getMaxValue(self):
         return (self.h_max, self.s_max, self.v_max)
 
-
 class BallTracker(ImageProcessor):
     def __init__(self):
         self.skipFrames = 0 
-        self.history = []
+        self.tracks = Tracks()
         self.roi = [0,0,1,1]
         self.colorThreshold = ColorThreshold()
 
@@ -70,43 +67,17 @@ class BallTracker(ImageProcessor):
             M = cv2.moments(c)
             center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
-            # self.history.append({
-            #             "radius": radius,
-            #             "center": center,
-            #         })
             cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
 
-            # if len(self.history) > 0:
-            #     previousTrack = self.history[-1]
-            #     radiusOk = previousTrack["radius"] - RADIUS_MAX_SPEED < radius < previousTrack["radius"] + RADIUS_MAX_SPEED
-            #     speedXok = previousTrack["center"][0] - PLANA_MAX_SPEED < x < previousTrack["center"][0] + PLANA_MAX_SPEED 
-            #     speedYok = previousTrack["center"][1] - PLANA_MAX_SPEED < y < previousTrack["center"][1] + PLANA_MAX_SPEED 
-            #     if radiusOk and speedXok and speedYok:
-                    
-            #     else:
-            #         self.skipFrames += 1
-            #         if self.skipFrames > MAX_SKIP_FRAME:
-            #             self.history.clear()
-            # else:
-            #     self.history.append({
-            #         "radius": radius,
-            #         "center": center,
-            #     })
+            thisTrack = Track( [x,y], radius, 0, 0 )
+            self.tracks.append(thisTrack)
 
-        # if len(self.history) < 2:
-        #     return False, None, None
-
-        # # loop over the set of tracked points
-        # for i in range(1, len(self.history)):
-        #     thickness = int(np.sqrt(64 / float(i + 1)) * 2.5)
-        #     cv2.line(frame, self.history[i - 1]["center"], self.history[i]["center"], (0, 0, 255), thickness)
-
-        # if len(self.history) > 64:
-        #     self.history.pop(0)
-
+            speed = self.tracks.estimateSpeed()
+            pos = np.array([x,y])
+            endPoint = np.add(pos, speed)
+            cv2.line(frame, tuple(pos.astype(int)), tuple(endPoint.astype(int)), (255, 0, 0), 5)
+            
         mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
-
-        # latestTrack = self.history[-1]
 
         return True, frame, mask

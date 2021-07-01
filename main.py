@@ -10,6 +10,7 @@ import numpy as np
 from VideoThread import VideoThread
 from ImageProcessor import BallTracker, ImageProcessor
 from Widget.Slider import Slider
+from Track import BallState
 
 class App(QWidget):
     def __init__(self):
@@ -89,11 +90,21 @@ class App(QWidget):
         self.vMaxSlider.change_value_signal.connect(self.vMaxSliderChange)
         colorControlLayout.addWidget(self.vMaxSlider)
 
+        # RESULT
+        resultLayout = QVBoxLayout()
+        resultLayout.addWidget(QLabel("Result"))
+
+        self.ballStateLabel = QLabel("")
+        self.ballStateLabel.setAlignment(Qt.AlignCenter)
+        resultLayout.addWidget(self.ballStateLabel)
+        self.updateBallState(BallState.Unknown)
+
         # CONTROL PANEL
         controlPanelLayout = QVBoxLayout()
         controlPanelLayout.addLayout(frameControlLayout)
         controlPanelLayout.addLayout(maskControlLayout)
         controlPanelLayout.addLayout(colorControlLayout)
+        controlPanelLayout.addLayout(resultLayout)
         controlPanelLayout.addWidget(QWidget())
 
         self.controlPanel = QWidget()
@@ -114,12 +125,38 @@ class App(QWidget):
         self.videoThread.stop()
         event.accept()
 
-    # SLOT
+    # FUNCTION
+    def updateBallState(self, s):
+        color = "transparent"
+        if s == BallState.Up:
+            self.ballStateLabel.setText("UP")
+            color = "green"
+        elif s == BallState.Down:
+            self.ballStateLabel.setText("DOWN")
+            color = "red"
+        else:
+            self.ballStateLabel.setText("Unknown")
+        self.ballStateLabel.setStyleSheet(f'background-color: {color}')
 
+    def convert_cv_qt(self, cv_img):
+        """Convert from an opencv image to QPixmap"""
+        rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb_image.shape
+        bytes_per_line = ch * w
+        convert_to_Qt_format = QtGui.QImage(rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888)
+        # print(self.image_label.width(), self.image_label.height)
+        p = convert_to_Qt_format.scaled(self.image_label.width(), self.image_label.height(), Qt.KeepAspectRatio)
+        return QPixmap.fromImage(p)
+
+
+    # SLOT
     @pyqtSlot(np.ndarray)
     def update_image(self, cv_img):
         qt_img = self.convert_cv_qt(cv_img)
         self.image_label.setPixmap(qt_img)
+
+        ballState = self.videoThread.imageProcessor.tracks.getBallState()
+        self.updateBallState(ballState)
 
     def topSliderChange(self, v):
         self.videoThread.setRoi(top=v)
@@ -168,16 +205,6 @@ class App(QWidget):
     
     def previousFrameClick(self):
         self.videoThread.previousFrame()
-    
-    def convert_cv_qt(self, cv_img):
-        """Convert from an opencv image to QPixmap"""
-        rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
-        h, w, ch = rgb_image.shape
-        bytes_per_line = ch * w
-        convert_to_Qt_format = QtGui.QImage(rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888)
-        # print(self.image_label.width(), self.image_label.height)
-        p = convert_to_Qt_format.scaled(self.image_label.width(), self.image_label.height(), Qt.KeepAspectRatio)
-        return QPixmap.fromImage(p)
     
 if __name__=="__main__":
     app = QApplication(sys.argv)
