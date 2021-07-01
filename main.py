@@ -15,7 +15,7 @@ class App(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Pingpong Robot Manager")
-        self.setFixedSize(1200,800)
+        self.setFixedSize(1000,800)
         
 
         # VIDEO DISPLAY
@@ -98,11 +98,12 @@ class App(QWidget):
 
         self.controlPanel = QWidget()
         self.controlPanel.setLayout(controlPanelLayout)
+        self.controlPanel.setFixedWidth(300)
 
         # MAIN LAYOUT
         mainLayout = QHBoxLayout()
-        mainLayout.addWidget(self.image_label, 2)
-        mainLayout.addWidget(self.controlPanel, 1)
+        mainLayout.addWidget(self.image_label)
+        mainLayout.addWidget(self.controlPanel)
 
         self.setLayout(mainLayout)
 

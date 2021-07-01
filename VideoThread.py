@@ -115,6 +115,8 @@ class VideoThread(QThread):
         return outputFrame                      
         
     def reprocessFrame(self):
+        if self.currentFrame is None:
+            return
         self.processFrame(self.currentFrame.copy())
 
     def resizeToFit(self, targetWidth, targetHeight, image):
@@ -156,6 +158,6 @@ class VideoThread(QThread):
         if right is not None:
             self.roi.right = right
 
-        self.processFrame(self.currentFrame)
+        self.reprocessFrame()
 
 
