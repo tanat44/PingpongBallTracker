@@ -2,10 +2,18 @@ Run on Pyhton3.9 + OpenCV
 
 Click the corresponding image to link to demo video
 
+2/7/2021
+- Add Perspective correction.
+- Organize controls in tab UI.
+- Predict hitting point (light blue line)
+- Predict future hitting frames
+
+[![Perspective Correction](https://github.com/tanat44/PingpongBallTracker/blob/master/doc/perspectiveCorrection210702.PNG)]()
+
 1/7/2021
 Add PyQt UI for easier parameter tuning
 
-[![Tracking Demo](https://github.com/tanat44/PingpongBallTracker/blob/master/doc/balldetectoroi210701.PNG)](https://youtu.be/TumrMjXR5lo)
+[![Pingpong UI](https://github.com/tanat44/PingpongBallTracker/blob/master/doc/balldetectoroi210701.PNG)](https://youtu.be/TumrMjXR5lo)
 
 17/6/2021
 Ball Tracking

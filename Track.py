@@ -18,9 +18,10 @@ class Track():
 class Tracks():
     Y_DIRECTION_THRESHOLD = 10  # in pixel
 
-    def __init__(self, maxLength=200):
+    def __init__(self, gameParameter, maxLength=200):
         self.history = []
         self.maxLength = maxLength
+        self.gameParameter = gameParameter
 
     def append(self, newTrack):
         if len(self.history) > self.maxLength:
@@ -44,6 +45,21 @@ class Tracks():
         t2 = self.history[-1].pos
         return BallState.Down if t1[1] < t2[1] else BallState.Up
 
+
+    def estimateFrameToHit(self):
+        if len(self.history) < 10:
+            return -1
+
+        pos = self.history[-1].pos
+        s = self.history[-1].speed
+
+        yOpponent, yRobot = self.gameParameter.getPlayerZone()
+        print(yRobot, pos[1])
+        time = (yRobot - pos[1]) / np.linalg.norm(s)
+
+        return time    
+
+
     def estimateCurrentSpeed(self):
         if len(self.history) < 2:
             return np.zeros(2)
@@ -62,8 +78,7 @@ class Tracks():
 
         d = np.zeros(2)
         for i in range(numFrames):
-            n = self.history[-1-i].speed
-            d += n 
+            d += self.history[-1-i].speed
         
         d_norm = np.linalg.norm(d)
 
@@ -83,3 +98,5 @@ class Tracks():
         # Down
         else:
             self.history[-1].direction = d
+
+

@@ -43,16 +43,24 @@ class App(QWidget):
         self.settingTab.addTab(self.gameControl, "Game")
         self.settingTab.addTab(self.roiControl, "Roi")
         self.settingTab.addTab(self.ballControl, "Ball")
+        self.settingTab.setCurrentWidget(self.roiControl)
 
         # RESULT
         resultLayout = QVBoxLayout()
-        resultLayout.addWidget(QLabel("Result"))
 
+        resultLayout.addWidget(QLabel("Ball Direction"))
         self.ballStateLabel = QLabel("")
         self.ballStateLabel.setAlignment(Qt.AlignCenter)
-        self.ballStateLabel.setFixedHeight(100)
-        resultLayout.addWidget(self.ballStateLabel)
+        self.ballStateLabel.setFixedHeight(80)
         self.updateBallState(BallState.Unknown)
+        resultLayout.addWidget(self.ballStateLabel)
+
+        resultLayout.addWidget(QLabel("Frames to hit"))
+        self.frameToHitLabel = QLabel("-")
+        self.frameToHitLabel.setAlignment(Qt.AlignCenter)
+        self.frameToHitLabel.setStyleSheet("font-weight: bold; font-size: 20px;")
+        self.frameToHitLabel.setFixedHeight(80)
+        resultLayout.addWidget(self.frameToHitLabel)
 
         # CONTROL PANEL
         controlPanelLayout = QVBoxLayout()
@@ -89,6 +97,14 @@ class App(QWidget):
         else:
             self.ballStateLabel.setText("Unknown")
         self.ballStateLabel.setStyleSheet(f'background-color: {color}')
+    
+    def updateFrameToHit(self):
+        v = self.imageProcessor.tracks.estimateFrameToHit()
+        if v < 0:
+            self.frameToHitLabel.setText("-")
+        else:
+            v = int(v)
+            self.frameToHitLabel.setText(str(v))
 
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""
@@ -109,6 +125,7 @@ class App(QWidget):
 
         ballState = self.videoThread.imageProcessor.tracks.getBallState()
         self.updateBallState(ballState)
+        self.updateFrameToHit()
     
 if __name__=="__main__":
     app = QApplication(sys.argv)

@@ -24,6 +24,10 @@ class GameControl(QWidget):
         self.numPredictFrameSlider.change_value_signal.connect(self.numPredictFrameChange)
         layout.addWidget(self.numPredictFrameSlider)
 
+        self.perspectiveSlider = Slider("Perspective Correct", 0, 200, self.gameParameter.perspective)
+        self.perspectiveSlider.change_value_signal.connect(self.perspectiveSliderChange)
+        layout.addWidget(self.perspectiveSlider)
+
         layout.addItem(QSpacerItem(20,20, QSizePolicy.Minimum, QSizePolicy.Expanding))
         self.setLayout(layout)
 
@@ -38,4 +42,9 @@ class GameControl(QWidget):
 
     def numPredictFrameChange(self, v):
         self.gameParameter.numPredictFrame = v
+        self.videoThread.reprocessFrame()
+
+    def perspectiveSliderChange(self, v):
+        self.gameParameter.perspective = v
+        self.imageProcessor.updatePerspectiveCorrection()
         self.videoThread.reprocessFrame()

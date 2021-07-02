@@ -28,26 +28,35 @@ class ColorThreshold():
         return (self.h_max, self.s_max, self.v_max)
 
 class GameParameter():
-    def __init__(self, opponentZone=8, robotZone=12, numPredictFrame=2):
+    def __init__(self, opponentZone=8, robotZone=12, numPredictFrame=2, perspective=100):
         self.opponentZone = opponentZone
         self.robotZone = robotZone
         self.numPredictFrame = numPredictFrame
+        self.imageHeight = 0
+        self.perspective = perspective
 
-    def getPlayerZone(self, imageHeight):
-        yOpponent = imageHeight * float(self.opponentZone)/100
-        yRobot = imageHeight * (1 - float(self.robotZone)/100)
+    def getPlayerZone(self, imageHeight=None):
+        if imageHeight is not None:
+            self.imageHeight = imageHeight
+        yOpponent = self.imageHeight * float(self.opponentZone)/100
+        yRobot = self.imageHeight * (1 - float(self.robotZone)/100)
         return yOpponent, yRobot
-
 
 class BallTracker(ImageProcessor):
     def __init__(self):
-        self.skipFrames = 0 
-        self.tracks = Tracks()
         self.roi = [0,0,1,1]
         self.colorThreshold = ColorThreshold()
         self.gameParameter = GameParameter()
+        self.tracks = Tracks(self.gameParameter)
+        self.transformationMatrix = None
+        self.width = 10
+        self.height = 10
 
     def calculate(self, frame):
+        self.height, self.width, c  = frame.shape
+        if self.transformationMatrix is None:
+            self.updatePerspectiveCorrection()
+        frame = cv2.warpPerspective(frame, self.transformationMatrix, (self.width, self.height))
         blurred = cv2.GaussianBlur(frame, (13, 13), 0)
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv, self.colorThreshold.getMinValue(), self.colorThreshold.getMaxValue())
@@ -78,6 +87,12 @@ class BallTracker(ImageProcessor):
 
         return True, frame, mask
     
+    def updatePerspectiveCorrection(self):
+        v1 = float(self.gameParameter.perspective) / 100 * self.width
+        pts1 = np.float32([[0,0],[self.width, 0],[-v1,self.height],[self.width+v1,self.height]])    # current 
+        pts2 = np.float32([[0,0],[self.width, 0],[0,self.height],[self.width,self.height]])    # target
+        self.transformationMatrix = cv2.getPerspectiveTransform(pts1,pts2)
+
     def drawHitLine(self, frame):
         # ray1
         p = self.tracks.getLastTrack().pos
