@@ -73,8 +73,8 @@ class VideoThread(QThread):
             # writeServo(latestTrack["center"][0])
 
     def stop(self):
-        """Sets run flag to False and waits for thread to finish"""
         self.running = False
+        self.playing = True
         self.wait()
 
     # PLAY API

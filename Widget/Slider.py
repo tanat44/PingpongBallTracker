@@ -1,5 +1,4 @@
-from PyQt5.QtWidgets import (QSizePolicy, QWidget, QSlider, QHBoxLayout,
-                             QLabel, QApplication)
+from PyQt5.QtWidgets import (QSizePolicy, QWidget, QSlider, QHBoxLayout, QLabel)
 from PyQt5.QtCore import Qt, pyqtSignal
 
 
