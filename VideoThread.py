@@ -88,7 +88,6 @@ class VideoThread(QThread):
     def nextFrame(self):
         self.playOneFrame = True
         self.playing = True
-        self.processFrame(self.currentFrame)
     
     def previousFrame(self):
         pass
@@ -99,17 +98,18 @@ class VideoThread(QThread):
             return None
 
         height, width, channels = frame.shape
-        outFrame = self.drawRoi(frame, width, height)
+        
 
         t, l, b, r = self.roi.getAbsoluteValue(width, height)
         cropFrame = frame[t:b, l:r]
-        success, newFrame, mask = self.imageProcessor.calculate(cropFrame)
+        success, newFrame, mask = self.imageProcessor.calculate(cropFrame.copy())
         processImage = np.zeros((height,width,3), np.uint8)
         if success:
             processImage = cv2.hconcat([newFrame, mask])
             processImage = self.resizeToFit(width, height, processImage)
 
-        outputFrame = cv2.vconcat([outFrame, processImage])
+        self.drawRoi(frame, width, height)
+        outputFrame = cv2.vconcat([frame, processImage])
         self.change_pixmap_signal.emit(outputFrame)
         
         return outputFrame                      

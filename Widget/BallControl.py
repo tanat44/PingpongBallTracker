@@ -1,7 +1,7 @@
-from PyQt5.QtWidgets import (QSizePolicy, QWidget, QSlider, QVBoxLayout, QLabel, QPushButton)
+from PyQt5.QtWidgets import (QSizePolicy, QWidget, QSlider, QVBoxLayout, QLabel, QPushButton, QSpacerItem)
 from Widget.Slider import Slider
 
-class ColorControl(QWidget):
+class BallControl(QWidget):
 
     def __init__(self, videoThread):
         super().__init__()
@@ -31,6 +31,7 @@ class ColorControl(QWidget):
         self.vMaxSlider.change_value_signal.connect(self.vMaxSliderChange)
         layout.addWidget(self.vMaxSlider)
 
+        layout.addItem(QSpacerItem(20,20, QSizePolicy.Minimum, QSizePolicy.Expanding))
         self.setLayout(layout)
 
     def hMinSliderChange(self, v):

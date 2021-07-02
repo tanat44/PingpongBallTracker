@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QSizePolicy, QWidget, QSlider, QVBoxLayout, QLabel, QPushButton)
+from PyQt5.QtWidgets import (QSizePolicy, QSpacerItem, QWidget, QSlider, QVBoxLayout, QLabel, QPushButton)
 from Widget.Slider import Slider
 
 class RoiControl(QWidget):
@@ -24,6 +24,7 @@ class RoiControl(QWidget):
         self.rightSlider.change_value_signal.connect(self.rightSliderChange)
         layout.addWidget(self.rightSlider)
 
+        layout.addItem(QSpacerItem(20,20, QSizePolicy.Minimum, QSizePolicy.Expanding))
         self.setLayout(layout)
 
         # INIT VALUE

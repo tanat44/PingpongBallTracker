@@ -12,6 +12,7 @@ class Slider(QWidget):
         self.nameLabel = QLabel(name, self)
         self.nameLabel.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.nameLabel.setFixedWidth(40)        
+        self.nameLabel.setWordWrap(True)
 
         sld = QSlider(Qt.Horizontal, self)
         sld.setRange(min, max)
@@ -30,7 +31,7 @@ class Slider(QWidget):
 
         self.setLayout(hbox)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setFixedHeight(30)
+        self.setFixedHeight(50)
 
     def updateLabel(self, value):
         self.valueLabel.setText(str(value))

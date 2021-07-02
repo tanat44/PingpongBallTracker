@@ -1,5 +1,5 @@
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QHBoxLayout, QPushButton, QSizePolicy, QWidget, QApplication, QLabel, QVBoxLayout, QGridLayout
+from PyQt5.QtWidgets import QHBoxLayout, QPushButton, QSizePolicy, QWidget, QApplication, QLabel, QVBoxLayout, QGridLayout, QTabWidget
 from PyQt5.QtGui import QPixmap
 import sys
 import cv2
@@ -9,33 +9,40 @@ import numpy as np
 # MY LIB
 from VideoThread import VideoThread
 from ImageProcessor import BallTracker, ImageProcessor
+from Track import BallState
+
+# MY WIDGET
 from Widget.Slider import Slider
 from Widget.FrameControl import FrameControl
 from Widget.RoiControl import RoiControl
-from Widget.ColorControl import ColorControl
-from Track import BallState
+from Widget.BallControl import BallControl
+from Widget.GameControl import GameControl
 
 class App(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Pingpong Robot Manager")
         self.setFixedSize(1000,800)
-        
 
         # VIDEO DISPLAY
         self.image_label = QLabel(self)
-        # self.image_label.setFixedSize(640,480)
-        self.imageProcessor = {
-            "ballTracker": BallTracker()
-        }
-        self.videoThread = VideoThread(self.imageProcessor["ballTracker"], file = "Video/test.mp4")
+        self.imageProcessor = BallTracker()
+        self.videoThread = VideoThread(self.imageProcessor, file = "Video/test.mp4")
         self.videoThread.change_pixmap_signal.connect(self.update_image)
         self.videoThread.start()
 
-        # CONTROLS
+        # FRAME CONTROL
         self.frameControl = FrameControl(self.videoThread)
+
+        # SETTING TAB
         self.roiControl = RoiControl(self.videoThread)
-        self.colorControl = ColorControl(self.videoThread)
+        self.ballControl = BallControl(self.videoThread)
+        self.gameControl = GameControl(self.videoThread)
+
+        self.settingTab = QTabWidget()
+        self.settingTab.addTab(self.gameControl, "Game")
+        self.settingTab.addTab(self.roiControl, "Roi")
+        self.settingTab.addTab(self.ballControl, "Ball")
 
         # RESULT
         resultLayout = QVBoxLayout()
@@ -43,14 +50,14 @@ class App(QWidget):
 
         self.ballStateLabel = QLabel("")
         self.ballStateLabel.setAlignment(Qt.AlignCenter)
+        self.ballStateLabel.setFixedHeight(100)
         resultLayout.addWidget(self.ballStateLabel)
         self.updateBallState(BallState.Unknown)
 
         # CONTROL PANEL
         controlPanelLayout = QVBoxLayout()
         controlPanelLayout.addWidget(self.frameControl)
-        controlPanelLayout.addWidget(self.roiControl)
-        controlPanelLayout.addWidget(self.colorControl)
+        controlPanelLayout.addWidget(self.settingTab)
         controlPanelLayout.addLayout(resultLayout)
         controlPanelLayout.addWidget(QWidget())
 

@@ -5,6 +5,7 @@ import imutils
 
 # MY LIB
 from Track import Track, Tracks
+from Utils.RayIntersection import RayIntersection
 
 class ImageProcessor():
     @abstractmethod
@@ -26,12 +27,84 @@ class ColorThreshold():
     def getMaxValue(self):
         return (self.h_max, self.s_max, self.v_max)
 
+class GameParameter():
+    def __init__(self, opponentZone=8, robotZone=12, numPredictFrame=2):
+        self.opponentZone = opponentZone
+        self.robotZone = robotZone
+        self.numPredictFrame = numPredictFrame
+
+    def getPlayerZone(self, imageHeight):
+        yOpponent = imageHeight * float(self.opponentZone)/100
+        yRobot = imageHeight * (1 - float(self.robotZone)/100)
+        return yOpponent, yRobot
+
+
 class BallTracker(ImageProcessor):
     def __init__(self):
         self.skipFrames = 0 
         self.tracks = Tracks()
         self.roi = [0,0,1,1]
         self.colorThreshold = ColorThreshold()
+        self.gameParameter = GameParameter()
+
+    def calculate(self, frame):
+        blurred = cv2.GaussianBlur(frame, (13, 13), 0)
+        hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv, self.colorThreshold.getMinValue(), self.colorThreshold.getMaxValue())
+        mask = cv2.erode(mask, None, iterations=2)
+        mask = cv2.dilate(mask, None, iterations=2)
+        cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
+            cv2.CHAIN_APPROX_SIMPLE)
+        cnts = imutils.grab_contours(cnts)
+        center = None
+        
+        self.drawPlayerZone(frame)    
+
+        if len(cnts) > 0:
+            c = max(cnts, key=cv2.contourArea)
+            ((x, y), radius) = cv2.minEnclosingCircle(c)
+            M = cv2.moments(c)
+            center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+
+            cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
+            cv2.circle(frame, center, 5, (0, 0, 255), -1)
+
+            thisTrack = Track( [x,y], radius, 0, 0 )
+            self.tracks.append(thisTrack)
+            self.drawSpeedVector(frame)
+            self.drawHitLine(frame)
+            
+        mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
+
+        return True, frame, mask
+    
+    def drawHitLine(self, frame):
+        # ray1
+        p = self.tracks.getLastTrack().pos
+        self.tracks.estimateBallDirection(self.gameParameter.numPredictFrame)
+        d = self.tracks.getLastTrack().direction
+        
+        # ray2
+        h, w, c  = frame.shape
+        yOpponent, yRobot = self.gameParameter.getPlayerZone(h)
+        yRobot = np.array([0, yRobot])
+
+        hitPoint = RayIntersection(p, p+d, yRobot, yRobot + np.array([1,0]))        
+        cv2.line(frame, tuple(p.astype(int)), tuple(hitPoint.astype(int)), (255, 153, 51), 5)
+
+    def drawSpeedVector(self, frame):
+        lastTrack = self.tracks.getLastTrack()
+        pos = np.array(lastTrack.pos)
+        speed = self.tracks.estimateCurrentSpeed()        
+        endPoint = np.add(pos, speed)
+        cv2.line(frame, tuple(pos.astype(int)), tuple(endPoint.astype(int)), (255, 0, 0), 5)
+
+    def drawPlayerZone(self, frame):
+        h, w, c  = frame.shape
+        
+        yOpponent, yRobot = self.gameParameter.getPlayerZone(h)
+        cv2.line(frame, (0, int(yOpponent)), (w, int(yOpponent)), (255, 0, 0), 3)
+        cv2.line(frame, (0, int(yRobot)), (w, int(yRobot)), (255, 0, 0), 3)
 
     def setRoi(self, top, left, bottom, right):
         self.roi = [top, left, bottom, right]
@@ -49,35 +122,3 @@ class BallTracker(ImageProcessor):
             self.colorThreshold.v_min = v_min
         if v_max is not None:
             self.colorThreshold.v_max = v_max
-
-    def calculate(self, frame):
-        blurred = cv2.GaussianBlur(frame, (13, 13), 0)
-        hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv, self.colorThreshold.getMinValue(), self.colorThreshold.getMaxValue())
-        mask = cv2.erode(mask, None, iterations=2)
-        mask = cv2.dilate(mask, None, iterations=2)
-        cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
-            cv2.CHAIN_APPROX_SIMPLE)
-        cnts = imutils.grab_contours(cnts)
-        center = None
-
-        if len(cnts) > 0:
-            c = max(cnts, key=cv2.contourArea)
-            ((x, y), radius) = cv2.minEnclosingCircle(c)
-            M = cv2.moments(c)
-            center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-
-            cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
-            cv2.circle(frame, center, 5, (0, 0, 255), -1)
-
-            thisTrack = Track( [x,y], radius, 0, 0 )
-            self.tracks.append(thisTrack)
-
-            speed = self.tracks.estimateSpeed()
-            pos = np.array([x,y])
-            endPoint = np.add(pos, speed)
-            cv2.line(frame, tuple(pos.astype(int)), tuple(endPoint.astype(int)), (255, 0, 0), 5)
-            
-        mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
-
-        return True, frame, mask
