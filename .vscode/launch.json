@@ -4,11 +4,20 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
-            "name": "Python: Current File",
+            "name": "Python: Main UI",
             "type": "python",
             "request": "launch",
             "program": "main.py",
+            "console": "integratedTerminal"
+        },
+
+        {
+            "name": "Python: Planner",
+            "type": "python",
+            "request": "launch",
+            "program": "MotionPlanner.py",
             "console": "integratedTerminal"
         }
     ]
