@@ -43,7 +43,7 @@ class App(QWidget):
         self.settingTab.addTab(self.gameControl, "Game")
         self.settingTab.addTab(self.roiControl, "Roi")
         self.settingTab.addTab(self.ballControl, "Ball")
-        self.settingTab.setCurrentWidget(self.roiControl)
+        # self.settingTab.setCurrentWidget(self.roiControl)
 
         # RESULT
         resultLayout = QVBoxLayout()
@@ -52,7 +52,7 @@ class App(QWidget):
         self.ballStateLabel = QLabel("")
         self.ballStateLabel.setAlignment(Qt.AlignCenter)
         self.ballStateLabel.setFixedHeight(80)
-        self.updateBallState(BallState.Unknown)
+        self.updateBallState()
         resultLayout.addWidget(self.ballStateLabel)
 
         resultLayout.addWidget(QLabel("Frames to hit"))
@@ -86,7 +86,8 @@ class App(QWidget):
         event.accept()
 
     # FUNCTION
-    def updateBallState(self, s):
+    def updateBallState(self):
+        s = self.imageProcessor.tracks.getBallState()
         color = "transparent"
         if s == BallState.Up:
             self.ballStateLabel.setText("UP")
@@ -99,7 +100,7 @@ class App(QWidget):
         self.ballStateLabel.setStyleSheet(f'background-color: {color}')
     
     def updateFrameToHit(self):
-        v = self.imageProcessor.tracks.estimateFrameToHit()
+        v = self.imageProcessor.tracks.getFrameToHit()
         if v < 0:
             self.frameToHitLabel.setText("-")
         else:
@@ -123,8 +124,7 @@ class App(QWidget):
         qt_img = self.convert_cv_qt(cv_img)
         self.image_label.setPixmap(qt_img)
 
-        ballState = self.videoThread.imageProcessor.tracks.getBallState()
-        self.updateBallState(ballState)
+        self.updateBallState()
         self.updateFrameToHit()
     
 if __name__=="__main__":

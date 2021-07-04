@@ -2,6 +2,7 @@ import numpy as np
 from enum import Enum
 
 DOWN_VECTOR = np.array([0, 1])
+SPEED_DIRECTION_THRESHOLD = 25
 
 class BallState(Enum):
     Unknown = 1
@@ -9,11 +10,12 @@ class BallState(Enum):
     Down = 3
 
 class Track():
-    def __init__(self, pos, radius, speed=np.zeros(2), direction=DOWN_VECTOR):
+    def __init__(self, pos, radius, speed=np.zeros(2), direction=DOWN_VECTOR, ballState=BallState.Unknown):
         self.pos = np.array(pos)
         self.radius = radius
         self.speed = speed
         self.direction = direction
+        self.ballState = ballState
 
 class Tracks():
     Y_DIRECTION_THRESHOLD = 10  # in pixel
@@ -28,6 +30,11 @@ class Tracks():
             self.history.pop(0)
         self.history.append(newTrack)
 
+        # CALCULATION
+        self.calculateCurrentSpeed()
+        self.calculateBallDirection(self.gameParameter.numPredictFrame)
+        self.calculateBallState()
+
     def getTrackAt(self, index):
         if index < -1 or index >= len(self.history):
             return None
@@ -37,30 +44,73 @@ class Tracks():
     def getLastTrack(self):
         return self.getTrackAt(-1)
 
+    def isBallInGame(self, pos):
+        yOpponent, yRobot = self.gameParameter.getPlayerZone()
+        # ball in player zone
+        if pos[1] < yOpponent or pos[1] > yRobot:
+            return False
+
+        # ball in game (table zone)
+        # pos[1] >= yOpponent and y[1] <= yRobot
+        return True
+
     def getBallState(self):
-        if len(self.history) < 2:
+        if len(self.history) < 1:
             return BallState.Unknown
 
-        t1 = self.history[-2].pos
-        t2 = self.history[-1].pos
-        return BallState.Down if t1[1] < t2[1] else BallState.Up
+        return self.history[-1].ballState
 
-
-    def estimateFrameToHit(self):
-        if len(self.history) < 10:
+    def getFrameToHit(self):
+        if len(self.history) < 15:
             return -1
 
         pos = self.history[-1].pos
-        s = self.history[-1].speed
+
+        # speed = latest known positive y speed
+        speed = np.zeros(2)
+        maxSeekFrame = 10
+        foundPositiveYSpeed = False
+        for i in range(maxSeekFrame):
+            s = self.history[-1-i].speed
+            if s[1] > 0:
+                foundPositiveYSpeed = True
+                speed = s.copy()
+                break
+        if not foundPositiveYSpeed:
+            return -1        
 
         yOpponent, yRobot = self.gameParameter.getPlayerZone()
-        print(yRobot, pos[1])
-        time = (yRobot - pos[1]) / np.linalg.norm(s)
+        time = (yRobot - pos[1]) / np.linalg.norm(speed)
 
         return time    
 
+    # CALCULATION
+    def calculateBallState(self):
+        if len(self.history) < 2:
+            return 
+        
+        lastHistory = self.history[-1]
+        isInGame = self.isBallInGame(lastHistory.pos)
+        if not isInGame:
+            return
 
-    def estimateCurrentSpeed(self):
+        # ball is in-game, find the direction
+        ballAtPlayerFrame = -1
+        for i in range(len(self.history)-2, 0, -1):
+            t = self.history[i]
+            if t.ballState is BallState.Unknown:
+                ballAtPlayerFrame = i
+                break
+
+        # cannot find when ball was at player
+        if ballAtPlayerFrame == -1:
+            return
+        
+        p0 = self.history[ballAtPlayerFrame].pos
+        p = lastHistory.pos
+        lastHistory.ballState = BallState.Down if p[1] > p0[1] else BallState.Up
+
+    def calculateCurrentSpeed(self):
         if len(self.history) < 2:
             return np.zeros(2)
 
@@ -71,7 +121,7 @@ class Tracks():
 
         return speed
         
-    def estimateBallDirection(self, numFrames):
+    def calculateBallDirection(self, numFrames):
         if len(self.history) < numFrames:
             self.history[-1].direction = np.zeros(2)
             return 
@@ -80,12 +130,10 @@ class Tracks():
         for i in range(numFrames):
             d += self.history[-1-i].speed
         
+        # Unstable result when sum speed vector is smaller than threshold
         d_norm = np.linalg.norm(d)
-
-        # Unstable result
-        if d_norm < 0.5:
+        if d_norm < SPEED_DIRECTION_THRESHOLD*numFrames:
             self.history[-1].direction = np.copy(self.history[-2].direction)
-            print("unstable")
             return
         
         d = d / d_norm

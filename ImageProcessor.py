@@ -28,7 +28,7 @@ class ColorThreshold():
         return (self.h_max, self.s_max, self.v_max)
 
 class GameParameter():
-    def __init__(self, opponentZone=8, robotZone=12, numPredictFrame=2, perspective=100):
+    def __init__(self, opponentZone=36, robotZone=12, numPredictFrame=2, perspective=100):
         self.opponentZone = opponentZone
         self.robotZone = robotZone
         self.numPredictFrame = numPredictFrame
@@ -96,7 +96,6 @@ class BallTracker(ImageProcessor):
     def drawHitLine(self, frame):
         # ray1
         p = self.tracks.getLastTrack().pos
-        self.tracks.estimateBallDirection(self.gameParameter.numPredictFrame)
         d = self.tracks.getLastTrack().direction
         
         # ray2
@@ -109,8 +108,8 @@ class BallTracker(ImageProcessor):
 
     def drawSpeedVector(self, frame):
         lastTrack = self.tracks.getLastTrack()
-        pos = np.array(lastTrack.pos)
-        speed = self.tracks.estimateCurrentSpeed()        
+        pos = lastTrack.pos
+        speed = lastTrack.speed
         endPoint = np.add(pos, speed)
         cv2.line(frame, tuple(pos.astype(int)), tuple(endPoint.astype(int)), (255, 0, 0), 5)
 
