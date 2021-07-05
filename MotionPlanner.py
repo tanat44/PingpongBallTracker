@@ -2,6 +2,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+import csv
 
 LINK_LENGTH = 100
 X_MOTION_RANGE = [-40, 70] # MAXIMUM X RANGE -50 55
@@ -133,7 +134,7 @@ class MotionPlanner():
 
         plt.show()
 
-    def generateIkMap(self, stepSize=5):
+    def generateIkMap(self, stepSize=5, outputFilePath='MotionData/motion.csv'):
         # move to world origin
         worldOrigin = self.origin + np.array([self.xRange[0], self.yRange[0]])
         self.moveToPos(worldOrigin)
@@ -153,22 +154,20 @@ class MotionPlanner():
 
             firstPos = True
 
-    
-    # def saveJointMotion(self, outputFilePath = 'MotionData/motion.csv'):
-    #     jointMotion = np.asarray(self.jointMotion)
-    #     np.savetxt(outputFilePath, jointMotion, delimiter=',')
+        with open(outputFilePath, mode='w', newline='') as saveFile:
+            saveFile = csv.writer(saveFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            offset = -self.origin - np.array([self.xRange[0], self.yRange[0]])
+            for m in self.motion:
+                if not m.accurate:
+                    continue
+                pos = np.rint(m.getEndEffectorPos() + offset)
+                pos = pos.astype(int)
+                q = m.q
+                saveFile.writerow([str(pos[0]), str(pos[1]), str(q[0]), str(q[1])])
 
 
 if __name__ == "__main__":
     motionPlanner = MotionPlanner()
-    motionPlanner.generateIkMap(stepSize=5)
-    motionPlanner.plot(animate = False)
-
-    # # replay motion
-    # q = np.array(originalQ)
-    # motion = []
-    # for j in jointMotion:
-    #     q += degToRad(j)
-    #     x, y = forwardKinematic(q)
-    #     motion.append([x[-1], y[-1]])
+    motionPlanner.generateIkMap(stepSize=1)
+    # motionPlanner.plot(animate = False)
 

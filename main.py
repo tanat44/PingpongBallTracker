@@ -10,13 +10,14 @@ import numpy as np
 from VideoThread import VideoThread
 from ImageProcessor import BallTracker, ImageProcessor
 from Track import BallState
+from RobotController import RobotController
 
 # MY WIDGET
-from Widget.Slider import Slider
 from Widget.FrameControl import FrameControl
 from Widget.RoiControl import RoiControl
 from Widget.BallControl import BallControl
 from Widget.GameControl import GameControl
+from Widget.RobotControl import RobotControl
 
 class App(QWidget):
     def __init__(self):
@@ -24,9 +25,12 @@ class App(QWidget):
         self.setWindowTitle("Pingpong Robot Manager")
         self.setFixedSize(1000,800)
 
+        # OBJECT
+        self.robotController = RobotController()
+
         # VIDEO DISPLAY
         self.image_label = QLabel(self)
-        self.imageProcessor = BallTracker()
+        self.imageProcessor = BallTracker(self.robotController)
         self.videoThread = VideoThread(self.imageProcessor, file = "Video/test.mp4")
         self.videoThread.change_pixmap_signal.connect(self.update_image)
         self.videoThread.start()
@@ -38,12 +42,14 @@ class App(QWidget):
         self.roiControl = RoiControl(self.videoThread)
         self.ballControl = BallControl(self.videoThread)
         self.gameControl = GameControl(self.videoThread)
+        self.robotControl = RobotControl(self.videoThread, self.robotController.robotParameter)
 
         self.settingTab = QTabWidget()
         self.settingTab.addTab(self.gameControl, "Game")
         self.settingTab.addTab(self.roiControl, "Roi")
         self.settingTab.addTab(self.ballControl, "Ball")
-        # self.settingTab.setCurrentWidget(self.roiControl)
+        self.settingTab.addTab(self.robotControl, "Robot")
+        self.settingTab.setCurrentWidget(self.robotControl)
 
         # RESULT
         resultLayout = QVBoxLayout()

@@ -42,7 +42,6 @@ class VideoThread(QThread):
         self.roi = Roi(0,0,0,0)
         self.currentFrame = None
         
-
     def run(self):        
         reloadingVideo = False
         while self.running:

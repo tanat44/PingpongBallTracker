@@ -1,5 +1,7 @@
 import numpy as np
 from enum import Enum
+from Utils.RayIntersection import RayIntersection
+import math
 
 DOWN_VECTOR = np.array([0, 1])
 SPEED_DIRECTION_THRESHOLD = 25
@@ -10,11 +12,12 @@ class BallState(Enum):
     Down = 3
 
 class Track():
-    def __init__(self, pos, radius, speed=np.zeros(2), direction=DOWN_VECTOR, ballState=BallState.Unknown):
+    def __init__(self, pos, radius, speed=np.zeros(2), direction=DOWN_VECTOR, hitPoint=np.zeros(2), ballState=BallState.Unknown):
         self.pos = np.array(pos)
         self.radius = radius
         self.speed = speed
         self.direction = direction
+        self.hitPoint = hitPoint
         self.ballState = ballState
 
 class Tracks():
@@ -34,6 +37,7 @@ class Tracks():
         self.calculateCurrentSpeed()
         self.calculateBallDirection(self.gameParameter.numPredictFrame)
         self.calculateBallState()
+        self.calculateHitPoint()
 
     def getTrackAt(self, index):
         if index < -1 or index >= len(self.history):
@@ -82,7 +86,14 @@ class Tracks():
         yOpponent, yRobot = self.gameParameter.getPlayerZone()
         time = (yRobot - pos[1]) / np.linalg.norm(speed)
 
-        return time    
+        return time
+    
+    def getHitPoint(self):
+        for i in range(len(self.history)-1, 0, -1):
+            if self.history[i].hitPoint[0] != 0:
+                return self.history[i].hitPoint
+
+        return np.zeros(2)
 
     # CALCULATION
     def calculateBallState(self):
@@ -147,4 +158,19 @@ class Tracks():
         else:
             self.history[-1].direction = d
 
+    def calculateHitPoint(self):
+        lastTrack = self.getLastTrack()
+        # ray1
+        p = lastTrack.pos
+        d = lastTrack.direction
+        
+        # ray2
+        yOpponent, yRobot = self.gameParameter.getPlayerZone()
+        yRobot = np.array([0, yRobot])
+
+        hp = RayIntersection(p, p+d, yRobot, yRobot + np.array([1,0]))
+        if math.isnan(hp[0]):
+            return
+
+        self.history[-1].hitPoint = hp.copy()
 

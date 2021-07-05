@@ -32,8 +32,9 @@ class GameParameter():
         self.opponentZone = opponentZone
         self.robotZone = robotZone
         self.numPredictFrame = numPredictFrame
-        self.imageHeight = 0
         self.perspective = perspective
+
+        self.imageHeight = 0
 
     def getPlayerZone(self, imageHeight=None):
         if imageHeight is not None:
@@ -43,7 +44,7 @@ class GameParameter():
         return yOpponent, yRobot
 
 class BallTracker(ImageProcessor):
-    def __init__(self):
+    def __init__(self, robotController):
         self.roi = [0,0,1,1]
         self.colorThreshold = ColorThreshold()
         self.gameParameter = GameParameter()
@@ -51,6 +52,7 @@ class BallTracker(ImageProcessor):
         self.transformationMatrix = None
         self.width = 10
         self.height = 10
+        self.robotController = robotController
 
     def calculate(self, frame):
         self.height, self.width, c  = frame.shape
@@ -82,6 +84,12 @@ class BallTracker(ImageProcessor):
             self.tracks.append(thisTrack)
             self.drawSpeedVector(frame)
             self.drawHitLine(frame)
+
+        # DRAW ROBOT
+        hitPoint = self.tracks.getHitPoint()
+        xOffset = self.robotController.robotParameter.originX/100.0 * self.width
+        yOffset = self.robotController.robotParameter.originY/100.0 * self.height
+        self.robotController.drawKinematic(frame, hitPoint[0]/self.width, 0.1, xOffset=xOffset, yOffset=yOffset, color=(0,255,255), thickness=4)
             
         mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
 
@@ -94,16 +102,9 @@ class BallTracker(ImageProcessor):
         self.transformationMatrix = cv2.getPerspectiveTransform(pts1,pts2)
 
     def drawHitLine(self, frame):
-        # ray1
-        p = self.tracks.getLastTrack().pos
-        d = self.tracks.getLastTrack().direction
-        
-        # ray2
-        h, w, c  = frame.shape
-        yOpponent, yRobot = self.gameParameter.getPlayerZone(h)
-        yRobot = np.array([0, yRobot])
-
-        hitPoint = RayIntersection(p, p+d, yRobot, yRobot + np.array([1,0]))        
+        lastTrack = self.tracks.getLastTrack()
+        p = lastTrack.pos
+        hitPoint = lastTrack.hitPoint
         cv2.line(frame, tuple(p.astype(int)), tuple(hitPoint.astype(int)), (255, 153, 51), 5)
 
     def drawSpeedVector(self, frame):
@@ -115,7 +116,6 @@ class BallTracker(ImageProcessor):
 
     def drawPlayerZone(self, frame):
         h, w, c  = frame.shape
-        
         yOpponent, yRobot = self.gameParameter.getPlayerZone(h)
         cv2.line(frame, (0, int(yOpponent)), (w, int(yOpponent)), (255, 0, 0), 3)
         cv2.line(frame, (0, int(yRobot)), (w, int(yRobot)), (255, 0, 0), 3)

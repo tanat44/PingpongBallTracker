@@ -2,12 +2,16 @@ Run on Pyhton3.9 + OpenCV
 
 Click the corresponding image to link to demo video
 
+6/7/2021
+- Integrate offline motion planner with the ball tracking UI. 
+
+[![BallTracking + IK](https://github.com/tanat44/PingpongBallTracker/blob/master/doc/fkPlotCv.jpg)](https://youtu.be/clzRVqpBrZ4)
+
 5/7/2021
 - Create offline motion planner by pre-computing a look-up table for world-coordinate and join-coordinate. 
 - Modify ```Experiment/inverse kinematic.py``` into ```MotionPlanner.py```. 
 
 [![Offline Motion Planner](https://github.com/tanat44/PingpongBallTracker/blob/master/doc/motionPlanner210705.PNG)]()
-
 
 2/7/2021
 - Add Perspective correction.

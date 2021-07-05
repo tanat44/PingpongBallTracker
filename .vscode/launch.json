@@ -14,10 +14,18 @@
         },
 
         {
-            "name": "Python: Planner",
+            "name": "Python: Offline Planner",
             "type": "python",
             "request": "launch",
             "program": "MotionPlanner.py",
+            "console": "integratedTerminal"
+        },
+
+        {
+            "name": "Python: controller",
+            "type": "python",
+            "request": "launch",
+            "program": "RobotController.py",
             "console": "integratedTerminal"
         }
     ]
