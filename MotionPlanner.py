@@ -4,14 +4,24 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 LINK_LENGTH = 100
-X_MOTION_RANGE = [-50, 55] # MAXIMUM X RANGE -50 55
-Y_MOTION_RANGE = [-65, 0] # MAXIMUM Y RANGE -65 20
+X_MOTION_RANGE = [-40, 70] # MAXIMUM X RANGE -50 55
+Y_MOTION_RANGE = [-65, 25] # MAXIMUM Y RANGE -65 20
+POSITION_ACCURACY = 0.3
  
 def degToRad(deg):
     return deg * math.pi / 180
 
 def radToDeg(rad):
     return rad * 180 / math.pi
+
+class RobotConfiguration():
+    def __init__(self, pos = np.zeros((2,2)), q = np.zeros(2), accurate=False):
+        self.pos = pos.copy()
+        self.q = q.copy()
+        self.accurate = accurate
+    
+    def getEndEffectorPos(self):
+        return self.pos[-1,:]
 
 class Kinematic():
     def jacobianInv(q):
@@ -25,26 +35,22 @@ class Kinematic():
             / (j[1,1]*j[0,0] - j[0,1]*j[1,0])
 
     def forwardKinematic(q):
-        x = [0]
-        y = [0]
+        pos = np.zeros((2,2))
         for i in range(len(q)):
-            x.append(x[-1] + LINK_LENGTH*math.cos(q[i]))
-            y.append(y[-1] + LINK_LENGTH*math.sin(q[i]))
-        return x, y
+            x, y = 0,0
+            if i != 0:
+                x, y = pos[i-1, 0], pos[i-1, 1]
+            pos[i, 0] = x + LINK_LENGTH*math.cos(q[i])
+            pos[i, 1] = y + LINK_LENGTH*math.sin(q[i])
+        return pos
 
     def plot(q, ax):
-        x,y = Kinematic.forwardKinematic(q)
-        ax.plot(x, y)
-        ax.plot(x, y, 'bo', color='green')
-
-        # x, y = [],[]
-        # for m in motion:
-        #     x.append(m[0])
-        #     y.append(m[1])
-
-        # ax.plot(x, y, 'bo', color='red')
-
-
+        pos = Kinematic.forwardKinematic(q)
+        x, y = [0],[0]
+        for p in pos:
+            x.append(p[0])
+            y.append(p[1])
+        ax.plot(x, y, color='black', linestyle='-')
 
 class MotionPlanner():
 
@@ -52,8 +58,10 @@ class MotionPlanner():
         # state variables
         self.q = degToRad(np.array([90, 0]))
         self.originalQ = self.q.copy()
-        x, y = Kinematic.forwardKinematic(self.q)
-        self.pos = np.array([x[-1], y[-1]])
+        temp = Kinematic.forwardKinematic(self.q)
+        temp = temp[-1,:]
+        self.origin = temp.copy()
+        self.pos = temp.copy()
 
         # parameters
         self.xRange = xRange
@@ -61,39 +69,44 @@ class MotionPlanner():
 
         # motion
         self.motion = []
-        self.jointMotion = []
+
+    def clearMotion(self):
+        self.motion.clear()
+        self.originalQ = self.q.copy()
+        p = Kinematic.forwardKinematic(self.originalQ)
+        self.motion.append(RobotConfiguration(p, self.originalQ))
 
     def moveToPos(self, endPos, steps = 20 ):
-        endPos, endQ, newMotion, newJointMotion = self.planInverseKinematic(steps, self.pos, self.q, endPos)
+        endPos, endQ, newMotion = self.planInverseKinematic(steps, self.pos, self.q, endPos)
         
         self.pos = endPos
         self.q = endQ
         self.motion += newMotion
-        self.jointMotion += newJointMotion
 
     def planInverseKinematic(self, steps, startPos, startQ, endPos):
         motion = []
-        jointMotion = []
         currentPos = startPos.copy()
 
         for i in range(steps):
             delta = endPos-currentPos
             dp = delta / (steps - i)
+            target = currentPos + dp
             dq = np.matmul(Kinematic.jacobianInv(startQ), dp[..., None])
             dq = np.transpose(dq)[0]
-            jointMotion.append(radToDeg(dq))
-            startQ += dq
-            x, y = Kinematic.forwardKinematic(startQ)
-            currentPos = [x[-1], y[-1]]
-            motion.append(np.array([x[1], y[1]]))
-            motion.append(np.array([x[2], y[2]]))
+            startQ += dq            
+            newPos = Kinematic.forwardKinematic(startQ)
+
+            error = newPos[-1] - target
+            isAccurate = np.linalg.norm(error) < POSITION_ACCURACY
+            motion.append(RobotConfiguration(newPos, startQ, isAccurate))
+            currentPos = newPos[-1]
         
         endPos = currentPos
         endQ = startQ
 
-        return endPos, endQ, motion, jointMotion
+        return endPos, endQ, motion
 
-    def plot(self, showJointMotion = True, showKinematic = True):
+    def plot(self, animate = True, showKinematic = True, showKinematicAnimation = False):
         fig, ax = plt.subplots()
         ax.grid()
         ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
@@ -101,31 +114,55 @@ class MotionPlanner():
         if showKinematic:
             Kinematic.plot(self.originalQ, ax)
 
-        def animate(i):
-            x, y = [],[]
-            x.append(self.motion[i][0])
-            y.append(self.motion[i][1])
-            ax.plot(x, y, 'bo', color='red')
 
-        anim = FuncAnimation(fig, animate, interval=50, frames=len(self.motion))
+        if animate:
+            def animate(i):
+                p = self.motion[i].getEndEffectorPos()
+                x, y = [p[0]],[p[1]]
+                color = 'green' if self.motion[i].accurate else 'red'
+                ax.plot(x, y, color=color, marker='o')
+                if showKinematicAnimation:
+                    Kinematic.plot(self.motion[i].q, ax)
+
+            anim = FuncAnimation(fig, animate, interval=50, frames=len(self.motion))
+        else:
+            for m in self.motion:
+                p = m.getEndEffectorPos()
+                color = 'green' if m.accurate else 'red'
+                ax.plot([p[0]], [p[1]], color=color, marker='o')
+
         plt.show()
+
+    def generateIkMap(self, stepSize=5):
+        # move to world origin
+        worldOrigin = self.origin + np.array([self.xRange[0], self.yRange[0]])
+        self.moveToPos(worldOrigin)
+        self.clearMotion()
+
+        firstPos = True
+        c = self.motion[-1]    
+        for j in range(self.yRange[0], self.yRange[1], stepSize):           
+            self.q = c.q
+            self.pos = c.getEndEffectorPos()
+            
+            for i in range(self.xRange[0], self.xRange[1], stepSize):
+                self.moveToPos(self.origin + np.array([i, j]), steps = 1)
+                if firstPos:
+                    c = self.motion[-1]
+                    firstPos = False 
+
+            firstPos = True
+
     
-    def saveJointMotion(self, outputFilePath = 'MotionData/motion.csv'):
-        jointMotion = np.asarray(self.jointMotion)
-        np.savetxt(outputFilePath, jointMotion, delimiter=',')
+    # def saveJointMotion(self, outputFilePath = 'MotionData/motion.csv'):
+    #     jointMotion = np.asarray(self.jointMotion)
+    #     np.savetxt(outputFilePath, jointMotion, delimiter=',')
 
 
 if __name__ == "__main__":
     motionPlanner = MotionPlanner()
-    initialPos = motionPlanner.pos.copy()
-
-    motionPlanner.moveToPos(initialPos + np.array([X_MOTION_RANGE[0], Y_MOTION_RANGE[1]]))
-    motionPlanner.moveToPos(initialPos + np.array([X_MOTION_RANGE[0], Y_MOTION_RANGE[0]]))
-    motionPlanner.moveToPos(initialPos + np.array([X_MOTION_RANGE[1], Y_MOTION_RANGE[0]]))
-    motionPlanner.moveToPos(initialPos + np.array([X_MOTION_RANGE[1], Y_MOTION_RANGE[1]]))
-    motionPlanner.moveToPos(initialPos)
-
-    motionPlanner.plot()
+    motionPlanner.generateIkMap(stepSize=5)
+    motionPlanner.plot(animate = False)
 
     # # replay motion
     # q = np.array(originalQ)
